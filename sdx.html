@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoTown Kids: SDG Simulator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Fredoka & Nunito for playful, highly legible kid-friendly typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #e0f7fa 0%, #e8f5e9 50%, #fff9c4 100%);
+            user-select: none;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, .font-fredoka {
+            font-family: 'Fredoka', sans-serif;
+        }
+        /* Playful 3D tactile buttons */
+        .btn-kid {
+            transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 5px 0 rgba(0, 0, 0, 0.18);
+        }
+        .btn-kid:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 7px 0 rgba(0, 0, 0, 0.2);
+        }
+        .btn-kid:active:not(:disabled) {
+            transform: translateY(3px) scale(0.98);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
+        }
+        .btn-kid:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        /* Floating & Bouncing Animations */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-6px) rotate(2deg); }
+        }
+        .animate-float {
+            animation: floatSlow 3.5s ease-in-out infinite;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.4); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(250, 204, 21, 0); }
+        }
+        .pulse-hint {
+            animation: pulseGlow 2s infinite;
+        }
+
+        /* Custom Scrollbar for Chat */
+        .kid-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .kid-scroll::-webkit-scrollbar-track {
+            background: #f1f8e9;
+            border-radius: 10px;
+        }
+        .kid-scroll::-webkit-scrollbar-thumb {
+            background: #81c784;
+            border-radius: 10px;
+        }
+
+        /* Town Tile Hover Effect */
+        .town-tile {
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+        .town-tile:hover {
+            transform: scale(1.06);
+            z-index: 10;
+            filter: brightness(1.06);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col">
+
+    <!-- Top Navigation & Status Header -->
+    <header class="bg-white/90 backdrop-blur-md border-b-4 border-emerald-400 shadow-md sticky top-0 z-30 px-3 py-2 sm:px-6">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            <!-- Logo & Level Info -->
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-lime-400 flex items-center justify-center text-2xl shadow-md border-2 border-white animate-float">
+                    🌍
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-xl sm:text-2xl font-bold text-emerald-700 tracking-tight">EcoTown Kids</h1>
+                        <span id="headerLevelBadge" class="bg-amber-400 text-amber-950 font-fredoka font-bold text-xs sm:text-sm px-2.5 py-0.5 rounded-full shadow-sm">
+                            Level 1
+                        </span>
+                    </div>
+                    <p id="headerSdgSubtitle" class="text-xs sm:text-sm font-bold text-slate-500">SDG 1 & 2: No Poverty & Zero Hunger</p>
+                </div>
+            </div>
+
+            <!-- Town Balance Meters (Happiness, Nature, Energy) -->
+            <div class="flex items-center gap-2 sm:gap-4 bg-slate-100/90 px-3 py-1.5 rounded-2xl border-2 border-slate-200">
+                <!-- Happiness -->
+                <div class="flex flex-col items-center min-w-[68px] sm:min-w-[85px]">
+                    <div class="flex items-center gap-1 text-xs font-extrabold text-amber-600">
+                        <span>😊</span><span>Happy</span><span id="valHappy">50%</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-amber-100 rounded-full overflow-hidden border border-amber-300 mt-0.5">
+                        <div id="barHappy" class="h-full bg-amber-400 transition-all duration-500 rounded-full" style="width: 50%"></div>
+                    </div>
+                </div>
+                <!-- Nature -->
+                <div class="flex flex-col items-center min-w-[68px] sm:min-w-[85px]">
+                    <div class="flex items-center gap-1 text-xs font-extrabold text-emerald-600">
+                        <span>🌱</span><span>Nature</span><span id="valNature">40%</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-emerald-100 rounded-full overflow-hidden border border-emerald-300 mt-0.5">
+                        <div id="barNature" class="h-full bg-emerald-500 transition-all duration-500 rounded-full" style="width: 40%"></div>
+                    </div>
+                </div>
+                <!-- Energy -->
+                <div class="flex flex-col items-center min-w-[68px] sm:min-w-[85px]">
+                    <div class="flex items-center gap-1 text-xs font-extrabold text-sky-600">
+                        <span>⚡</span><span>Energy</span><span id="valEnergy">45%</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-sky-100 rounded-full overflow-hidden border border-sky-300 mt-0.5">
+                        <div id="barEnergy" class="h-full bg-sky-500 transition-all duration-500 rounded-full" style="width: 45%"></div>
+                    </div>
+                </div>
+                <!-- Eco-Coins -->
+                <div class="flex items-center gap-1 bg-yellow-300/90 border-2 border-yellow-500 px-2.5 py-1 rounded-xl font-fredoka font-bold text-yellow-950 text-sm shadow-inner" title="Eco-Coins to build!">
+                    <span>🪙</span><span id="valCoins">120</span>
+                </div>
+            </div>
+
+            <!-- Controls: Level Map, Sandbox Toggle, Sound -->
+            <div class="flex items-center gap-2">
+                <button id="btnLevelsModal" class="btn-kid bg-indigo-500 hover:bg-indigo-600 text-white font-fredoka font-semibold px-3 py-1.5 rounded-xl text-xs sm:text-sm flex items-center gap-1.5">
+                    <span>🗺️</span><span>Levels (1-10)</span>
+                </button>
+                <button id="btnSandboxToggle" class="btn-kid bg-slate-200 text-slate-700 font-fredoka font-semibold px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1" title="Unlock all 10 levels immediately">
+                    <span>🔓</span><span class="hidden md:inline">Sandbox:</span><span id="sandboxStatus">OFF</span>
+                </button>
+                <button id="btnSoundToggle" class="btn-kid bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold p-2 rounded-xl text-sm" title="Toggle Sound Effects">
+                    🔊
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+        
+        <!-- Left/Center Column: Mission Banner, Interactive Town Grid & Builder Dock (8 cols on lg) -->
+        <section class="lg:col-span-8 flex flex-col gap-4">
+            
+            <!-- Mission Goal Card -->
+            <div id="missionBanner" class="bg-white rounded-3xl p-4 shadow-md border-4 border-sky-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div class="flex items-start gap-3">
+                    <div id="missionSdgIcons" class="flex -space-x-1 shrink-0 pt-0.5">
+                        <!-- SDG Pill Badges injected here -->
+                    </div>
+                    <div>
+                        <h2 id="missionTitle" class="font-fredoka text-lg sm:text-xl font-bold text-slate-800">Level 1: Community Harvest</h2>
+                        <p id="missionDesc" class="text-sm text-slate-600 font-semibold">Help every neighbor have healthy food! Build Community Gardens and a Food Sharing Pantry, and water the dry crops.</p>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end shrink-0 w-full sm:w-auto">
+                    <div class="text-xs font-extrabold uppercase tracking-wider text-emerald-700 mb-1">
+                        Goal Progress: <span id="goalProgressText">0 / 3</span>
+                    </div>
+                    <div class="w-full sm:w-36 h-3.5 bg-slate-200 rounded-full overflow-hidden border-2 border-slate-300">
+                        <div id="goalProgressBar" class="h-full bg-gradient-to-r from-emerald-400 to-lime-500 transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Town Map Canvas/Grid Area -->
+            <div class="relative bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200 rounded-3xl p-3 sm:p-5 shadow-lg border-4 border-emerald-500 flex flex-col items-center justify-center overflow-hidden">
+                
+                <!-- Decorative Sky Clouds & Sun -->
+                <div class="w-full flex justify-between items-center mb-2 px-2 pointer-events-none">
+                    <div class="flex items-center gap-2 text-xs font-bold text-emerald-900 bg-white/70 px-3 py-1 rounded-full">
+                        <span>👆</span><span id="mapInstructionText">Select a tool below, then tap a tile on the town map!</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="weatherBadge" class="bg-amber-300/90 text-amber-950 text-xs font-extrabold px-3 py-1 rounded-full shadow-sm">☀️ Sunny Eco-Day</span>
+                    </div>
+                </div>
+
+                <!-- 6x5 Interactive Isometric-Style Town Grid -->
+                <div id="townGrid" class="grid grid-cols-6 gap-1.5 sm:gap-2.5 w-full max-w-2xl aspect-[6/5] bg-emerald-300/60 p-2 sm:p-3 rounded-2xl border-2 border-emerald-600/30 shadow-inner">
+                    <!-- 30 interactive tiles generated by JS -->
+                </div>
+
+                <!-- Floating Toast Notification inside Town -->
+                <div id="townToast" class="pointer-events-none opacity-0 transition-all duration-300 absolute bottom-4 bg-slate-900/90 text-white font-fredoka text-sm sm:text-base px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 z-20">
+                    <span id="toastIcon">✨</span>
+                    <span id="toastMsg">Awesome job!</span>
+                </div>
+            </div>
+
+            <!-- Builder & Mini-Action Tool Dock -->
+            <div class="bg-white rounded-3xl p-3 sm:p-4 shadow-md border-4 border-amber-300">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-fredoka font-bold text-base sm:text-lg text-amber-800 flex items-center gap-2">
+                        <span>🛠️</span><span>Eco-Builder & Action Toolkit</span>
+                    </h3>
+                    <span class="text-xs font-bold text-slate-500">Tap a card to select, then click on the map!</span>
+                </div>
+                <div id="toolDock" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <!-- Dynamic Level Tools injected here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: AI Eco-Buddy Helper & Mini-Quiz / Challenges (4 cols on lg) -->
+        <aside class="lg:col-span-4 flex flex-col gap-4">
+            
+            <!-- AI Eco-Buddy Companion Card -->
+            <div class="bg-white rounded-3xl shadow-lg border-4 border-teal-400 flex flex-col h-[460px] lg:h-[520px] overflow-hidden">
+                <!-- Buddy Header -->
+                <div class="bg-gradient-to-r from-teal-500 to-emerald-500 p-3.5 text-white flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-11 h-11 rounded-full bg-white text-2xl flex items-center justify-center shadow-md border-2 border-yellow-300 animate-float">
+                            🤖🌿
+                        </div>
+                        <div>
+                            <h3 class="font-fredoka font-bold text-lg leading-tight">Sprout the Eco-Buddy</h3>
+                            <p class="text-xs text-teal-100 font-semibold flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-lime-300 inline-block animate-ping"></span>
+                                AI SDG Guide • Ready to help!
+                            </p>
+                        </div>
+                    </div>
+                    <button id="btnBuddyHint" class="btn-kid bg-yellow-300 hover:bg-yellow-400 text-yellow-950 font-fredoka font-bold text-xs px-3 py-1.5 rounded-xl shadow">
+                        💡 Hint
+                    </button>
+                </div>
+
+                <!-- Chat Messages Area -->
+                <div id="chatMessages" class="flex-1 p-3.5 overflow-y-auto kid-scroll space-y-3 bg-teal-50/40">
+                    <!-- Messages injected here -->
+                </div>
+
+                <!-- Quick Kid Prompt Chips -->
+                <div class="px-3 py-2 bg-white border-t border-slate-100 flex gap-1.5 overflow-x-auto kid-scroll">
+                    <button class="quick-ask shrink-0 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full transition" data-prompt="What are these SDGs in simple words?">
+                        🌍 Explain SDGs
+                    </button>
+                    <button class="quick-ask shrink-0 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full transition" data-prompt="Tell me a short fun story about our town!">
+                        📖 Eco-Story
+                    </button>
+                    <button class="quick-ask shrink-0 bg-sky-100 hover:bg-sky-200 text-sky-800 text-xs font-bold px-2.5 py-1 rounded-full transition" data-prompt="Give me a bonus SDG riddle or mini-challenge!">
+                        🧩 Eco-Riddle
+                    </button>
+                </div>
+
+                <!-- Chat Input Form -->
+                <form id="chatForm" class="p-2.5 bg-slate-50 border-t-2 border-slate-200 flex gap-2">
+                    <input type="text" id="chatInput" placeholder="Ask Sprout anything about SDGs..." class="flex-1 bg-white border-2 border-teal-300 focus:border-teal-500 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none" autocomplete="off">
+                    <button type="submit" id="btnSendChat" class="btn-kid bg-teal-500 hover:bg-teal-600 text-white font-fredoka font-bold px-4 py-2 rounded-xl text-sm">
+                        Ask!
+                    </button>
+                </form>
+            </div>
+
+            <!-- Level Checklist / SDG Encyclopedia Card -->
+            <div class="bg-white rounded-3xl p-4 shadow-md border-4 border-purple-300">
+                <h3 class="font-fredoka font-bold text-base text-purple-800 mb-2 flex items-center gap-2">
+                    <span>📋</span><span>Level Tasks Checklist</span>
+                </h3>
+                <ul id="taskChecklist" class="space-y-2 text-sm font-bold text-slate-700">
+                    <!-- Checklist items injected dynamically -->
+                </ul>
+            </div>
+
+        </aside>
+    </main>
+
+    <!-- Level Selector Modal (Levels 1 to 10) -->
+    <div id="levelsModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-6 border-4 border-indigo-400 shadow-2xl max-h-[90vh] flex flex-col animate-pop">
+            <div class="flex items-center justify-between pb-3 border-b-2 border-slate-100">
+                <div>
+                    <h2 class="font-fredoka text-2xl font-bold text-indigo-700">🗺️ Choose Your EcoTown Adventure</h2>
+                    <p class="text-xs sm:text-sm font-bold text-slate-500">Complete levels 1 to 10 to become a Global SDG Champion!</p>
+                </div>
+                <button id="closeLevelsModal" class="btn-kid bg-rose-100 hover:bg-rose-200 text-rose-700 font-fredoka font-bold w-9 h-9 rounded-full flex items-center justify-center">
+                    ✕
+                </button>
+            </div>
+            
+            <div id="levelsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto kid-scroll py-4 px-1">
+                <!-- 10 Level Cards generated by JS -->
+            </div>
+
+            <div class="pt-3 border-t-2 border-slate-100 flex items-center justify-between text-xs font-bold text-slate-500">
+                <span>Tip: Use Sandbox mode in the top bar to unlock all 10 levels anytime!</span>
+                <button id="closeLevelsModalBottom" class="btn-kid bg-indigo-500 text-white font-fredoka px-4 py-2 rounded-xl">Back to Town</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory / Level Complete Badge Modal -->
+    <div id="victoryModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gradient-to-b from-amber-50 to-white rounded-3xl max-w-md w-full p-6 border-4 border-amber-400 shadow-2xl text-center animate-pop">
+            <div class="text-6xl mb-2 animate-bounce" id="victoryBadgeEmoji">🏆</div>
+            <span class="bg-emerald-100 text-emerald-800 font-fredoka font-bold text-xs px-3 py-1 rounded-full uppercase tracking-wider">Level Complete!</span>
+            <h2 id="victoryTitle" class="font-fredoka text-2xl sm:text-3xl font-bold text-slate-800 mt-2">Hunger Hero Badge!</h2>
+            <p id="victoryMessage" class="text-sm font-semibold text-slate-600 mt-2">
+                Amazing work! Everyone in EcoTown has fresh fruits, veggies, and a warm meal to share!
+            </p>
+            
+            <div id="victorySdgFact" class="mt-4 bg-sky-50 border-2 border-sky-200 rounded-2xl p-3 text-left text-xs font-bold text-sky-900">
+                <!-- Real-world kid-friendly SDG fun fact -->
+            </div>
+
+            <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                <button id="btnReplayLevel" class="btn-kid bg-slate-200 hover:bg-slate-300 text-slate-800 font-fredoka font-bold px-4 py-2.5 rounded-2xl text-sm">
+                    🔄 Play Again
+                </button>
+                <button id="btnNextLevel" class="btn-kid bg-gradient-to-r from-emerald-500 to-lime-500 hover:from-emerald-600 hover:to-lime-600 text-white font-fredoka font-bold px-6 py-2.5 rounded-2xl text-base shadow-lg">
+                    Next Level ➡️
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini-Challenge Modal (Interactive Kid Simulation Pop-up) -->
+    <div id="miniGameModal" class="hidden fixed inset-0 bg-slate-900/65 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 border-4 border-emerald-400 shadow-2xl animate-pop">
+            <div class="flex items-center justify-between mb-2">
+                <span class="bg-amber-300 text-amber-950 font-fredoka font-bold text-xs px-3 py-1 rounded-full">⚡ Eco-Action Mini-Task!</span>
+                <button id="closeMiniGame" class="text-slate-400 hover:text-slate-700 font-bold text-lg">✕</button>
+            </div>
+            <h3 id="miniGameTitle" class="font-fredoka text-xl font-bold text-slate-800">Sort the Recycling!</h3>
+            <p id="miniGamePrompt" class="text-sm font-semibold text-slate-600 mt-1">Tap the right bin for each item to keep our city super clean!</p>
+            
+            <div id="miniGameContent" class="my-4 bg-slate-50 rounded-2xl p-4 border-2 border-slate-200 text-center">
+                <!-- Interactive Mini-Challenge UI injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. WEB AUDIO API SOUND SYNTHESIZER (Kid-friendly effects)
+        // ==========================================
+        class SoundFX {
+            constructor() {
+                this.enabled = true;
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+            playTone(freq, type = 'sine', duration = 0.15, vol = 0.15, delay = 0) {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + delay);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + delay + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + delay);
+                    osc.stop(this.ctx.currentTime + delay + duration);
+                } catch (e) { /* Ignore audio autoplay blocks */ }
+            }
+            pop() {
+                this.playTone(520, 'sine', 0.12, 0.18);
+                this.playTone(780, 'sine', 0.14, 0.12, 0.05);
+            }
+            build() {
+                this.playTone(330, 'triangle', 0.12, 0.2, 0);
+                this.playTone(440, 'triangle', 0.12, 0.2, 0.08);
+                this.playTone(660, 'triangle', 0.2, 0.2, 0.16);
+            }
+            water() {
+                this.playTone(400, 'sine', 0.1, 0.15, 0);
+                this.playTone(600, 'sine', 0.15, 0.15, 0.07);
+                this.playTone(850, 'sine', 0.2, 0.12, 0.14);
+            }
+            error() {
+                this.playTone(220, 'sawtooth', 0.18, 0.12, 0);
+                this.playTone(180, 'sawtooth', 0.22, 0.12, 0.1);
+            }
+            victory() {
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((n, i) => this.playTone(n, 'triangle', 0.28, 0.22, i * 0.12));
+            }
+        }
+        const sfx = new SoundFX();
+
+        // ==========================================
+        // 2. CURRICULUM DATA: LEVELS 1 TO 10 (ALL 17 SDGs)
+        // ==========================================
+        const LEVELS = [
+            {
+                id: 1,
+                title: "Community Harvest",
+                sdgs: [
+                    { num: 1, name: "No Poverty", color: "bg-red-500" },
+                    { num: 2, name: "Zero Hunger", color: "bg-amber-500" }
+                ],
+                subtitle: "SDG 1 & 2: No Poverty & Zero Hunger",
+                desc: "Help every neighbor have healthy food! Water the dry soil patches, plant Community Gardens, and build a Food Sharing Pantry.",
+                badgeEmoji: "🥕",
+                badgeName: "Harvest & Sharing Hero",
+                fact: "Did you know? Sharing extra food and growing community gardens helps make sure nobody in town goes to bed hungry!",
+                startCoins: 140,
+                startStats: { happy: 45, nature: 40, energy: 50 },
+                hazardType: "dry_soil",
+                hazardEmoji: "🏜️",
+                hazardLabel: "Dry Patch",
+                hazardCount: 4,
+                tools: [
+                    { id: "water_can", name: "Water Soil", emoji: "🚿", cost: 10, action: "clean_hazard", desc: "Turn dry patches into rich soil!", stats: { happy: 4, nature: 6, energy: -2 } },
+                    { id: "garden", name: "Veggie Garden", emoji: "🥬", cost: 25, action: "build", desc: "Grows fresh carrots & tomatoes!", stats: { happy: 8, nature: 10, energy: 0 } },
+                    { id: "pantry", name: "Food Pantry", emoji: "🏪", cost: 35, action: "build", desc: "Free healthy groceries for all!", stats: { happy: 14, nature: 2, energy: -3 } },
+                    { id: "harvest_quiz", name: "Food Mini-Task", emoji: "🍎", cost: 0, action: "minigame", desc: "Sort healthy foods to earn +30 coins!", stats: { happy: 5, nature: 2, energy: 0 } }
+                ],
+                goals: [
+                    { id: "hazards", label: "Water all 4 Dry Soil patches", target: 4, current: 0 },
+                    { id: "garden", label: "Plant 3 Veggie Gardens", target: 3, current: 0 },
+                    { id: "pantry", label: "Build 1 Community Food Pantry", target: 1, current: 0 }
+                ],
+                miniGame: {
+                    title: "Healthy Harvest Sorter!",
+                    prompt: "Which item gives kids the best vitamins and energy to grow strong?",
+                    options: [
+                        { label: "🍎 Fresh Apple & Broccoli", correct: true, reward: 30, feedback: "Yum! Fresh fruits and veggies power up EcoTown!" },
+                        { label: "🍬 Empty Sugar Wrapper", correct: false, feedback: "Oops! Wrappers belong in the bin, not on our dinner plate!" },
+                        { label: "🥤 Fizzy Soda Can", correct: false, feedback: "Water and fresh fruit are much healthier for growing kids!" }
+                    ]
+                }
+            },
+            {
+                id: 2,
+                title: "Sparkling River & Wellness",
+                sdgs: [
+                    { num: 3, name: "Good Health", color: "bg-emerald-500" },
+                    { num: 6, name: "Clean Water", color: "bg-cyan-500" }
+                ],
+                subtitle: "SDG 3 & 6: Good Health & Clean Water",
+                desc: "Oh no! Trash floated into the river! Scoop out river litter, build Water Filter Stations, and open a Town Health Clinic.",
+                badgeEmoji: "💧",
+                badgeName: "Clean Water Guardian",
+                fact: "Clean water keeps germs away! Every living thing—kids, puppies, fish, and trees—needs fresh, clean water every day.",
+                startCoins: 150,
+                startStats: { happy: 40, nature: 35, energy: 50 },
+                hazardType: "muddy_water",
+                hazardEmoji: "🛢️",
+                hazardLabel: "River Trash",
+                hazardCount: 5,
+                tools: [
+                    { id: "net_scoop", name: "Clean River", emoji: "🪣", cost: 10, action: "clean_hazard", desc: "Scoop out floating trash!", stats: { happy: 5, nature: 8, energy: -1 } },
+                    { id: "water_filter", name: "Water Filter", emoji: "⛲", cost: 30, action: "build", desc: "Pure drinking fountains!", stats: { happy: 10, nature: 8, energy: -4 } },
+                    { id: "clinic", name: "Health Clinic", emoji: "🏥", cost: 40, action: "build", desc: "Friendly doctors & checkups!", stats: { happy: 15, nature: 0, energy: -5 } },
+                    { id: "water_quiz", name: "Water Saver Task", emoji: "🚰", cost: 0, action: "minigame", desc: "Solve a water puzzle for +30 coins!", stats: { happy: 5, nature: 5, energy: 0 } }
+                ],
+                goals: [
+                    { id: "hazards", label: "Clean all 5 River Trash spots", target: 5, current: 0 },
+                    { id: "water_filter", label: "Build 2 Water Filter Fountains", target: 2, current: 0 },
+                    { id: "clinic", label: "Build 1 Town Health Clinic", target: 1, current: 0 }
+                ],
+                miniGame: {
+                    title: "Smart Water Saver!",
+                    prompt: "How can you save lots of clean water while brushing your teeth?",
+                    options: [
+                        { label: "🚰 Turn off the tap while brushing!", correct: true, reward: 30, feedback: "Splash-tastic! Turning off the tap saves up to 8 gallons of water a day!" },
+                        { label: "🌊 Leave the tap running full blast", correct: false, feedback: "Oh no, that wastes clean water down the drain!" },
+                        { label: "🛁 Fill the bathtub twice", correct: false, feedback: "Let's save water for the fish and trees!" }
+                    ]
+                }
+            },
+            {
+                id: 3,
+                title: "Wonder School & Equal Voices",
+                sdgs: [
+                    { num: 4, name: "Quality Education", color: "bg-rose-600" },
+                    { num: 5, name: "Gender Equality", color: "bg-orange-500" }
+                ],
+                subtitle: "SDG 4 & 5: Quality Education & Gender Equality",
+                desc: "Every girl and boy deserves books, science labs, and leadership! Clear away old rubble and build Schools, Libraries, and STEM Labs.",
+                badgeEmoji: "📚",
+                badgeName: "Super Scholar Champion",
+                fact: "When girls and boys both get to go to school, read books, and become scientists or leaders, the whole world gets smarter!",
+                startCoins: 160,
+                startStats: { happy: 45, nature: 50, energy: 45 },
+                hazardType: "rubble",
+                hazardEmoji: "🧱",
+                hazardLabel: "Old Rubble",
+                hazardCount: 3,
+                tools: [
+                    { id: "clear_rubble", name: "Clear Lot", emoji: "🚜", cost: 10, action: "clean_hazard", desc: "Make space for learning!", stats: { happy: 4, nature: 4, energy: -2 } },
+                    { id: "library", name: "Book Library", emoji: "📖", cost: 25, action: "build", desc: "Free books & story time for all!", stats: { happy: 12, nature: 2, energy: -2 } },
+                    { id: "school", name: "Eco-School", emoji: "🏫", cost: 40, action: "build", desc: "Equal learning for girls & boys!", stats: { happy: 16, nature: 3, energy: -4 } },
+                    { id: "edu_quiz", name: "Equality Task", emoji: "🎓", cost: 0, action: "minigame", desc: "Answer a classroom challenge (+30 coins)!", stats: { happy: 6, nature: 0, energy: 0 } }
+                ],
+                goals: [
+                    { id: "hazards", label: "Clear all 3 Old Rubble lots", target: 3, current: 0 },
+                    { id: "library", label: "Build 2 Community Libraries", target: 2, current: 0 },
+                    { id: "school", label: "Build 2 Inclusive Eco-Schools", target: 2, current: 0 }
+                ],
+                miniGame: {
+                    title: "Science Club Team!",
+                    prompt: "Who can be a rocket scientist, coder, or town mayor in EcoTown?",
+                    options: [
+                        { label: "🌟 Both girls and boys equally!", correct: true, reward: 30, feedback: "100% Right! Everyone's ideas and talents make EcoTown shine!" },
+                        { label: "👦 Only boys", correct: false, feedback: "Nope! Girls and boys are equally awesome at science and leadership!" },
+                        { label: "👧 Only girls", correct: false, feedback: "Everyone deserves an equal chance to learn and lead!" }
+                    ]
+                }
+            },
+            {
+                id: 4,
+                title: "Sunshine & Wind Power",
+                sdgs: [
+                    { num: 7, name: "Affordable & Clean Energy", color: "bg-yellow-500" }
+                ],
+                subtitle: "SDG 7: Affordable & Clean Energy",
+                desc: "Old smoky generators are making the air gray! Replace smoke stacks with shiny Solar Panels and spinning Wind Turbines!",
+                badgeEmoji: "☀️",
+                badgeName: "Clean Energy Wizard",
+                fact: "Sunlight and wind never run out and don't make smoke! That's why we call them Renewable Energy.",
+                startCoins: 170,
+                startStats: { happy: 45, nature: 35, energy: 30 },
+                hazardType: "smog",
+                hazardEmoji: "🏭",
+                hazardLabel: "Smoky Generator",
+                hazardCount: 4,
+                tools: [
+                    { id: "recycle_smog", name: "Retire Smoke", emoji: "🧹", cost: 15, action: "clean_hazard", desc: "Remove smoky old generators!", stats: { happy: 6, nature: 10, energy: -5 } },
+                    { id: "solar", name: "Solar Roofs", emoji: "☀️", cost: 25, action: "build", desc: "Clean electricity from sunshine!", stats: { happy: 6, nature: 6, energy: 14 } },
+                    { id: "wind", name: "Wind Turbine", emoji: "🌬️", cost: 35, action: "build", desc: "Breezy clean power for the town!", stats: { happy: 6, nature: 8, energy: 18 } },
+                    { id: "energy_quiz", name: "Power Grid Task", emoji: "⚡", cost: 0, action: "minigame", desc: "Pick renewable energy (+35 coins)!", stats: { happy: 4, nature: 4, energy: 8 } }
+                ],
+                goals: [
+                    { id: "hazards", label: "Remove all 4 Smoky Generators", target: 4, current: 0 },
+                    { id: "solar", label: "Build 3 Solar Panel Arrays", target: 3, current: 0 },
+                    { id: "wind", label: "Build 2 Wind Turbines", target: 2, current: 0 }
+                ],
+                miniGame: {
+                    title: "Clean Energy Detective!",
+                    prompt: "Which energy source makes electricity WITHOUT polluting the air?",
+                    options: [
+                        { label: "☀️ Solar Panels & Wind Turbines", correct: true, reward: 35, feedback: "Zap! Sunshine and wind keep the air super fresh and clean!" },
+                        { label: "🛢️ Burning dark coal", correct: false, feedback: "Coal makes lots of smoke. Let's use sunshine and wind instead!" },
+                        { label: "⛽ Gasoline fumes", correct: false, feedback: "Gasoline pollutes the air. Renewable power is much cleaner!" }
+                    ]
+                }
+            },
+            {
+                id: 5,
+                title: "Green Inventors & Fair Work",
+                sdgs: [
+                    { num: 8, name: "Decent Work", color: "bg-rose-800" },
+                    { num: 9, name: "Industry & Innovation", color: "bg-orange-600" }
+                ],
+                subtitle: "SDG 8 & 9: Decent Work & Green Innovation",
+                desc: "Let's create awesome green jobs! Build Solar Repair Workshops, Robotics & Innovation Labs, and Fast Electric Trains!",
+                badgeEmoji: "🚀",
+                badgeName: "Green Inventor Pro",
+                fact: "Green jobs help people earn a fair living while inventing cool things like electric buses, solar chargers, and biodegradable toys!",
+                startCoins: 180,
+                startStats: { happy: 45, nature: 45, energy: 45 },
+                hazardType: "broken_road",
+                hazardEmoji: "🚧",
+                hazardLabel: "Bumpy Track",
+                hazardCount: 3,
+                tools: [
+                    { id: "fix_track", name: "Upgrade Track", emoji: "🛠️", cost: 15, action: "clean_hazard", desc: "Smooth path for eco-trains!", stats: { happy: 6, nature: 4, energy: 2 } },
+                    { id: "workshop", name: "Green Workshop", emoji: "🧑‍🔧", cost: 30, action: "build", desc: "Fair, safe jobs fixing bikes & solar!", stats: { happy: 14, nature: 4, energy: 4 } },
+                    { id: "lab", name: "Innovation Lab", emoji: "🔬", cost: 40, action: "build", desc: "Kids & scientists invent eco-tech!", stats: { happy: 12, nature: 8, energy: 8 } },
+                    { id: "tech_quiz", name: "Inventor Quiz", emoji: "💡", cost: 0, action: "minigame", desc: "Solve an invention puzzle (+35 coins)!", stats: { happy: 5, nature: 5, energy: 5 } }
+                ],
+                goals: [
+                    { id: "hazards", label: "Upgrade all 3 Bumpy Tracks", target: 3, current: 0 },
+                    { id: "workshop", label: "Build 2 Green Repair Workshops", target: 2, current: 0 },
+                    { id: "lab", label: "Build 2 Eco-Innovation Labs", target: 2, current: 0 }
+                ],
+                miniGame: {
+                    title: "Eco-Inventor Challenge!",
+                    prompt: "Your friend's bicycle chain broke! What is the best SDG 8 & 9 solution?",
+                    options: [
+                        { label: "🔧 Fix it at the Green Repair Workshop!", correct: true, reward: 35, feedback: "Awesome! Repairing things creates skilled jobs and stops waste!" },
+                        { label: "🗑️ Throw the whole bike in the river", correct: false, feedback: "Never pollute! Fixing bikes saves money and nature!" },
+                        { label: "🚗 Buy a smoky monster truck", correct: false, feedback: "Bicycles are way healthier and cleaner for EcoTown!" }
+                    ]
+                }
+            },
+            {
+                id: 6,
+                title: "City for Everyone",
+                sdgs: [
+                    { num: 10, name: "Reduced Inequalities", color: "bg-pink-600" },
+                    { num: 11, name: "Sustainable Cities", color: "bg-amber-600" }
+                ],
+                subtitle: "SDG 10 & 11: Reduced Inequalities & Sustainable Cities",
+                desc: "Make EcoTown welcoming for everyone—including grandparents and kids in wheelchairs! Build Wheelchair-Friendly Parks, Bike Lanes, and Electric Buses.",
+                badgeEmoji: "🏙️",
+                badgeName: "Inclusive City Architect",
+                fact: "A great sustainable city has safe sidewalks, ramps for wheelchairs, green parks for everyone, and clean buses!",
+                startCoins: 190,
+                startStats: { happy: 40, nature: 45, energy: 50 },
+                hazardType: "traffic",
+                hazardEmoji: "🚗",
+                hazardLabel: "Traffic Jam",
+                hazardCount: 4,
+                tools: [
+                    { id: "clear_jam", name: "Open Bike Lane", emoji: "🚲", cost: 15, action: "clean_hazard", desc: "Replace traffic jams with bike paths!", stats: { happy: 8, nature: 8, energy: 4 } },
+                    { id: "park", name: "Inclusive Park", emoji: "🛝", cost: 30, action: "build", desc: "Accessible swings & ramps for all kids!", stats: { happy: 15, nature: 10, energy: 0 } },
+                    { id: "ebus", name: "Electric Bus Stop", emoji: "🚌", cost: 35, action: "build", desc: "Free, quiet rides across town!", stats: { happy: 12, nature: 8, energy: -3 } },
+                    { id: "city_quiz", name: "City Helper Task", emoji: "🤝", cost: 0, action: "minigame", desc: "Help design an inclusive town (+35 coins)!", stats: { happy: 8, nature: 2, energy: 0 } }
+                ],
+                goals: [
+                    { id: "hazards", label: "Turn all 4 Traffic Jams into Bike Lanes", target: 4, current: 0 },
+                    { id: "park", label: "Build 3 Inclusive Play Parks", target: 3, current: 0 },
+                    { id: "ebus", label: "Build 2 Electric Bus Stops", target: 2, current: 0 }
+                ],
+                miniGame: {
+                    title: "Playground for All!",
+                    prompt: "How do we make sure a kid using a wheelchair can play at our new park?",
+                    options: [
+                        { label: "♿ Build smooth ramps & inclusive swings!", correct: true, reward: 35, feedback: "Hooray! When everyone can play together, friendship grows!" },
+                        { label: "🪜 Only build tall ladders", correct: false, feedback: "Tall ladders leave friends out. Smooth ramps welcome everyone!" },
+                        { label: "🚧 Put a fence around the park", correct: false, feedback: "Parks should be open and welcoming to all neighbors!" }
+                    ]
+                }
+            },
+            {
+                id: 7,
+                title: "Zero-Waste Wonders",
+                sdgs: [
+                    { num: 12, name: "Responsible Consumption", color: "bg-yellow-700" }
+                ],
+                subtitle: "SDG 12: Responsible Consumption & Production",
+                desc: "Too much trash is piling up! Use the 3 R's (Reduce, Reuse, Recycle), turn apple cores into Compost, and open a Toy Swap Market!",
+                badgeEmoji: "♻️",
+                badgeName: "Zero-Waste Superstar",
+                fact: "Composting fruit peels turns food scraps into super-vitamin soil for flowers and veggies instead of stinky landfill trash!",
+                startCoins: 190,
+                startStats: { happy: 45, nature: 35, energy: 50 },
+                hazardType: "trash_pile",
+                hazardEmoji: "🗑️",
+                hazardLabel: "Litter Pile",
+                hazardCount: 5,
+                tools: [
+                    { id: "recycle_bin", name: "Sort & Recycle", emoji: "♻️", cost: 10, action: "clean_hazard", desc: "Sort paper, glass & cans!", stats: { happy: 6, nature: 9, energy: 2 } },
+                    { id: "compost", name: "Compost Garden", emoji: "🪱", cost: 25, action: "build", desc: "Worms turn food scraps into rich soil!", stats: { happy: 6, nature: 14, energy: 0 } },
+                    { id: "swap_shop", name: "Toy & Book Swap", emoji: "🧸", cost: 35, action: "build", desc: "Trade outgrown toys instead of tossing!", stats: { happy: 15, nature: 8, energy: 0 } },
+                    { id: "waste_quiz", name: "3-R's Sorting Game", emoji: "📦", cost: 0, action: "minigame", desc: "Sort waste properly (+40 coins)!", stats: { happy: 5, nature: 8, energy: 0 } }
+                ],
+                goals: [
+                    { id: "hazards", label: "Recycle all 5 Litter Piles", target: 5, current: 0 },
+                    { id: "compost", label: "Build 3 Worm Compost Stations", target: 3, current: 0 },
+                    { id: "swap_shop", label: "Open 2 Toy & Book Swap Shops", target: 2, current: 0 }
+                ],
+                miniGame: {
+                    title: "Compost Magic!",
+                    prompt: "You finished eating a banana! Where should the banana peel go?",
+                    options: [
+                        { label: "🪱 Into the Compost Bin to make soil!", correct: true, reward: 40, feedback: "Awesome! Worms love banana peels and turn them into plant food!" },
+                        { label: "🛣️ On the sidewalk", correct: false, feedback: "Watch out, someone could slip! Composting is much smarter." },
+                        { label: "🌊 Into the ocean", correct: false, feedback: "Keep our oceans clean! Banana peels belong in compost." }
+                    ]
+                }
+            },
+            {
+                id: 8,
+                title: "Cool the Planet Squad",
+                sdgs: [
+                    { num: 13, name: "Climate Action", color: "bg-green-700" }
+                ],
+                subtitle: "SDG 13: Climate Action",
+                desc: "Earth is feeling too warm from greenhouse gases! Cool down heat islands, plant Giant Carbon-Eating Forests, and build Weather Alert Towers!",
+                badgeEmoji: "🌳",
+                badgeName: "Climate Action Defender",
+                fact: "Trees breathe in carbon dioxide (CO₂) and breathe out fresh oxygen—making forests Earth's best natural air conditioners!",
+                startCoins: 200,
+                startStats: { happy: 45, nature: 30, energy: 45 },
+                hazardType: "heat_wave",
+                hazardEmoji: "🌡️",
+                hazardLabel: "Hot Asphalt",
+                hazardCount: 5,
+                tools: [
+                    { id: "cool_mist", name: "Cool & Shade", emoji: "💧", cost: 15, action: "clean_hazard", desc: "Cool down hot asphalt spots!", stats: { happy: 7, nature: 8, energy: 0 } },
+                    { id: "forest", name: "Giant Oak Forest", emoji: "🌲", cost: 25, action: "build", desc: "Soaks up CO₂ and cools the air!", stats: { happy: 8, nature: 16, energy: 0 } },
+                    { id: "weather_station", name: "Climate Station", emoji: "🛰️", cost: 40, action: "build", desc: "Protects town from storms!", stats: { happy: 12, nature: 6, energy: 6 } },
+                    { id: "climate_quiz", name: "Climate Hero Quiz", emoji: "🌎", cost: 0, action: "minigame", desc: "Beat greenhouse gases (+40 coins)!", stats: { happy: 5, nature: 10, energy: 0 } }
+                ],
+                goals: [
+                    { id: "hazards", label: "Cool down all 5 Hot Asphalt spots", target: 5, current: 0 },
+                    { id: "forest", label: "Plant 4 Giant Oak Forests", target: 4, current: 0 },
+                    { id: "weather_station", label: "Build 1 Climate Weather Station", target: 1, current: 0 }
+                ],
+                miniGame: {
+                    title: "Greenhouse Gas Busters!",
+                    prompt: "How do trees help stop Earth from getting too hot?",
+                    options: [
+                        { label: "🌲 They soak up carbon dioxide & give shade!", correct: true, reward: 40, feedback: "Spot on! Trees are superhero climate helpers!" },
+                        { label: "🔥 They burn fossil fuels", correct: false, feedback: "No way! Trees clean the air and keep us cool." },
+                        { label: "❄️ They make snowballs in July", correct: false, feedback: "Haha, not quite! They absorb CO₂ and cool the air with shade." }
+                    ]
+                }
+            },
+            {
+                id: 9,
+                title: "Whales, Coral & Forest Friends",
+                sdgs: [
+                    { num: 14, name: "Life Below Water", color: "bg-blue-600" },
+                    { num: 15, name: "Life on Land", color: "bg-lime-600" }
+                ],
+                subtitle: "SDG 14 & 15: Life Below Water & Life on Land",
+                desc: "Protect sea turtles, coral reefs, honeybees, and forest foxes! Rescue tangled plastic nets, restore Coral Reefs, and build Bee & Wildlife Sanctuaries!",
+                badgeEmoji: "🐢",
+                badgeName: "Wildlife & Ocean Protector",
+                fact: "Busy honeybees pollinate 1 out of every 3 bites of food we eat, while healthy coral reefs are homes for thousands of colorful fish!",
+                startCoins: 210,
+                startStats: { happy: 50, nature: 30, energy: 50 },
+                hazardType: "plastic_net",
+                hazardEmoji: "🕸️",
+                hazardLabel: "Plastic Net",
+                hazardCount: 5,
+                tools: [
+                    { id: "rescue_net", name: "Rescue Wildlife", emoji: "✂️", cost: 15, action: "clean_hazard", desc: "Remove plastic nets safely!", stats: { happy: 8, nature: 12, energy: 0 } },
+                    { id: "coral", name: "Coral & Turtle Bay", emoji: "🐠", cost: 30, action: "build", desc: "Safe ocean home for sea turtles!", stats: { happy: 10, nature: 15, energy: 0 } },
+                    { id: "bee_meadow", name: "Bee & Fox Sanctuary", emoji: "🐝", cost: 35, action: "build", desc: "Wildflowers for bees & forest animals!", stats: { happy: 10, nature: 15, energy: 0 } },
+                    { id: "bio_quiz", name: "Animal Rescue Quiz", emoji: "🦊", cost: 0, action: "minigame", desc: "Help sea & forest animals (+40 coins)!", stats: { happy: 6, nature: 10, energy: 0 } }
+                ],
+                goals: [
+                    { id: "hazards", label: "Clear all 5 Plastic Nets", target: 5, current: 0 },
+                    { id: "coral", label: "Restore 3 Coral & Turtle Bays", target: 3, current: 0 },
+                    { id: "bee_meadow", label: "Build 3 Bee & Fox Sanctuaries", target: 3, current: 0 }
+                ],
+                miniGame: {
+                    title: "Ocean & Meadow Protectors!",
+                    prompt: "Why are honeybees and butterflies so important to EcoTown?",
+                    options: [
+                        { label: "🌸 They pollinate flowers so fruits & veggies grow!", correct: true, reward: 40, feedback: "Bzzz-tastic! Without pollinators, we wouldn't have apples, strawberries, or pumpkins!" },
+                        { label: "🎸 They play tiny electric guitars", correct: false, feedback: "That would be cute, but they actually pollinate our flowers and crops!" },
+                        { label: "🧱 They build brick skyscrapers", correct: false, feedback: "Bees build honeycombs and help flowers grow!" }
+                    ]
+                }
+            },
+            {
+                id: 10,
+                title: "Global Peace & Eco-Festival!",
+                sdgs: [
+                    { num: 16, name: "Peace & Justice", color: "bg-sky-700" },
+                    { num: 17, name: "Partnerships for Goals", color: "bg-indigo-800" }
+                ],
+                subtitle: "SDG 16 & 17: Peace, Justice & Global Partnerships",
+                desc: "THE GRAND FINALE! Unite all 17 SDGs! Solve disagreements peacefully, build a Town Peace Hall, Friendship Bridges, and host the World Eco-Festival!",
+                badgeEmoji: "🏆",
+                badgeName: "Supreme Global SDG Champion!",
+                fact: "When kids, families, and countries work together as a team (SDG 17) in peace and fairness (SDG 16), we can achieve ALL 17 SDGs!",
+                startCoins: 240,
+                startStats: { happy: 50, nature: 50, energy: 50 },
+                hazardType: "grumpy_cloud",
+                hazardEmoji: "⛈️",
+                hazardLabel: "Grumpy Dispute",
+                hazardCount: 4,
+                tools: [
+                    { id: "peace_talk", name: "Listen & Share", emoji: "🕊️", cost: 15, action: "clean_hazard", desc: "Turn arguments into teamwork!", stats: { happy: 12, nature: 4, energy: 2 } },
+                    { id: "bridge", name: "Friendship Bridge", emoji: "🌉", cost: 30, action: "build", desc: "Connects neighborhoods together!", stats: { happy: 14, nature: 6, energy: 4 } },
+                    { id: "festival", name: "Global SDG Stage", emoji: "🎪", cost: 45, action: "build", desc: "Music, flags & all 17 SDGs united!", stats: { happy: 20, nature: 10, energy: 5 } },
+                    { id: "final_quiz", name: "Champion Finale Quiz", emoji: "🌍", cost: 0, action: "minigame", desc: "Final SDG teamwork question (+50 coins)!", stats: { happy: 10, nature: 10, energy: 5 } }
+                ],
+                goals: [
+                    { id: "hazards", label: "Resolve all 4 Grumpy Disputes peacefully", target: 4, current: 0 },
+                    { id: "bridge", label: "Build 3 Friendship Bridges", target: 3, current: 0 },
+                    { id: "festival", label: "Build 2 Global SDG Festival Stages", target: 2, current: 0 }
+                ],
+                miniGame: {
+                    title: "Grand SDG Teamwork Finale!",
+                    prompt: "What is the big secret of SDG 17 (Partnerships for the Goals)?",
+                    options: [
+                        { label: "🤝 Working together across the whole world!", correct: true, reward: 50, feedback: "CONGRATULATIONS! Teamwork makes the dream work for Planet Earth!" },
+                        { label: "🏝️ Everyone hiding alone on separate islands", correct: false, feedback: "We are much stronger when we share ideas and help each other!" },
+                        { label: "🤐 Never talking to neighbors", correct: false, feedback: "Listening and partnering together is how we solve big problems!" }
+                    ]
+                }
+            }
+        ];
+
+        // ==========================================
+        // 3. GAME STATE & PERSISTENCE
+        // ==========================================
+        const state = {
+            currentLevelIdx: 0,
+            unlockedMaxLevel: 1,
+            sandboxMode: false,
+            coins: 140,
+            stats: { happy: 45, nature: 40, energy: 50 },
+            selectedToolId: null,
+            grid: [], // 30 tiles (6x5)
+            goals: [],
+            levelCompleted: false,
+            completedBadges: new Set(),
+            chatHistory: []
+        };
+
+        // Load saved progress safely
+        try {
+            const saved = JSON.parse(localStorage.getItem('ecotown_kids_save'));
+            if (saved) {
+                state.unlockedMaxLevel = saved.unlockedMaxLevel || 1;
+                state.completedBadges = new Set(saved.completedBadges || []);
+            }
+        } catch (e) {}
+
+        function saveProgress() {
+            try {
+                localStorage.setItem('ecotown_kids_save', JSON.stringify({
+                    unlockedMaxLevel: state.unlockedMaxLevel,
+                    completedBadges: Array.from(state.completedBadges)
+                }));
+            } catch (e) {}
+        }
+
+        // ==========================================
+        // 4. GEMINI API INTEGRATION (SPROUT THE ECO-BUDDY)
+        // ==========================================
+        const apiKey = ""; // Canvas runtime provides key automatically
+
+        async function callGeminiEcoBuddy(userPrompt, isAutoReaction = false) {
+            const lvl = LEVELS[state.currentLevelIdx];
+            const sdgNames = lvl.sdgs.map(s => `SDG ${s.num}: ${s.name}`).join(" & ");
+            const systemInstruction = `You are Sprout, a cheerful, super-friendly robot-plant AI Eco-Buddy in a kids' simulation game called "EcoTown Kids: SDG Simulator" (for ages 7-12).
+Current Level: Level ${lvl.id} (${lvl.title}) focusing on ${sdgNames}.
+Current Town Stats: Happiness ${state.stats.happy}%, Nature ${state.stats.nature}%, Clean Energy ${state.stats.energy}%, Eco-Coins: ${state.coins}.
+Rules:
+1. Keep responses short, warm, enthusiastic, and easy for a child to read (2 to 4 short sentences max!).
+2. Use fun emojis (🌱, 🌍, ✨, 🐢, ☀️, 🎉).
+3. Always connect back to the UN Sustainable Development Goals in a hopeful, empowering way.
+4. Never be scary or gloomy; focus on how kids can be everyday heroes!`;
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] }
+            };
+
+            const delays = [1000, 2000, 4000];
+            for (let attempt = 0; attempt <= delays.length; attempt++) {
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) throw new Error("API status " + res.status);
+                    const data = await res.json();
+                    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (reply) return reply.trim();
+                } catch (err) {
+                    if (attempt < delays.length) {
+                        await new Promise(r => setTimeout(r, delays[attempt]));
+                    }
+                }
+            }
+
+            // Friendly offline fallback if network unavailable
+            return getOfflineBuddyFallback(lvl, isAutoReaction);
+        }
+
+        function getOfflineBuddyFallback(lvl, isAutoReaction) {
+            const sdg = lvl.sdgs[0];
+            if (isAutoReaction) {
+                return `Woohoo! 🎉 Your town is looking greener and happier! Keep working on ${sdg.name} (SDG ${sdg.num}) to earn your ${lvl.badgeName}! 🌱✨`;
+            }
+            return `Hi Eco-Hero! 🌍 In Level ${lvl.id}, we're exploring SDG ${sdg.num} (${sdg.name})! ${lvl.fact} Tap a tool below and click on the town map to build! 🌟`;
+        }
+
+        function appendChatMessage(sender, text, isThinking = false) {
+            const container = document.getElementById('chatMessages');
+            const wrapper = document.createElement('div');
+            wrapper.className = sender === 'user'
+                ? 'flex justify-end animate-pop'
+                : 'flex items-start gap-2 animate-pop';
+
+            if (sender === 'user') {
+                wrapper.innerHTML = `
+                    <div class="bg-indigo-500 text-white rounded-2xl rounded-tr-sm px-3.5 py-2 max-w-[82%] text-sm font-bold shadow">
+                        ${escapeHtml(text)}
+                    </div>
+                `;
+            } else {
+                wrapper.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-teal-100 border-2 border-teal-400 flex items-center justify-center text-base shrink-0 mt-0.5">
+                        🤖
+                    </div>
+                    <div class="bg-white border-2 border-teal-200 text-slate-700 rounded-2xl rounded-tl-sm px-3.5 py-2 max-w-[85%] text-sm font-semibold shadow-sm ${isThinking ? 'italic text-teal-600' : ''}">
+                        ${escapeHtml(text)}
+                    </div>
+                `;
+            }
+            container.appendChild(wrapper);
+            container.scrollTop = container.scrollHeight;
+            return wrapper;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        async function askSprout(promptText, showUserBubble = true) {
+            if (showUserBubble) {
+                appendChatMessage('user', promptText);
+                sfx.pop();
+            }
+            const thinkingNode = appendChatMessage('ai', 'Sprout is thinking... 🌱✨', true);
+            const reply = await callGeminiEcoBuddy(promptText, !showUserBubble);
+            thinkingNode.remove();
+            appendChatMessage('ai', reply);
+        }
+
+        // ==========================================
+        // 5. TOWN GRID & LEVEL ENGINE
+        // ==========================================
+        function loadLevel(idx) {
+            state.currentLevelIdx = idx;
+            state.levelCompleted = false;
+            const lvl = LEVELS[idx];
+            state.coins = lvl.startCoins;
+            state.stats = { ...lvl.startStats };
+            state.goals = lvl.goals.map(g => ({ ...g, current: 0 }));
+            state.selectedToolId = lvl.tools[0].id;
+
+            // Generate 30 tiles (6 columns x 5 rows)
+            // Row 2 has a scenic river/path stream across the middle
+            state.grid = [];
+            for (let i = 0; i < 30; i++) {
+                const row = Math.floor(i / 6);
+                const col = i % 6;
+                const isWater = (row === 2 && (lvl.id === 2 || lvl.id === 9 || col === 2 || col === 3));
+                state.grid.push({
+                    index: i,
+                    terrain: isWater ? 'water' : 'grass',
+                    item: null, // { emoji, name, id }
+                    hazard: null // { emoji, label, type }
+                });
+            }
+
+            // Place cute starter town homes on corners so town feels alive
+            state.grid[0].item = { emoji: '🏡', name: 'Cozy Home', id: 'starter_home' };
+            state.grid[5].item = { emoji: '🏠', name: 'Neighbor House', id: 'starter_home' };
+            if (lvl.id >= 4) {
+                state.grid[24].item = { emoji: '🏘️', name: 'Eco-Apartments', id: 'starter_home' };
+            }
+
+            // Place Level Hazards on random empty tiles
+            let placedHazards = 0;
+            let safetyCounter = 0;
+            while (placedHazards < lvl.hazardCount && safetyCounter < 200) {
+                safetyCounter++;
+                const randIdx = Math.floor(Math.random() * 30);
+                const tile = state.grid[randIdx];
+                if (!tile.item && !tile.hazard) {
+                    // For Level 2 (River Cleanup), prefer water tiles
+                    if (lvl.id === 2 && tile.terrain !== 'water' && safetyCounter < 100) continue;
+                    tile.hazard = {
+                        emoji: lvl.hazardEmoji,
+                        label: lvl.hazardLabel,
+                        type: lvl.hazardType
+                    };
+                    placedHazards++;
+                }
+            }
+
+            renderAll();
+
+            // Clear and greet with Sprout
+            document.getElementById('chatMessages').innerHTML = '';
+            appendChatMessage('ai', `Welcome to Level ${lvl.id}: ${lvl.title}! 🌟 Let's team up on ${lvl.subtitle}. ${lvl.desc}`);
+        }
+
+        function renderAll() {
+            const lvl = LEVELS[state.currentLevelIdx];
+
+            // Header updates
+            document.getElementById('headerLevelBadge').textContent = `Level ${lvl.id} / 10`;
+            document.getElementById('headerSdgSubtitle').textContent = lvl.subtitle;
+            document.getElementById('valCoins').textContent = state.coins;
+
+            // Meters
+            ['happy', 'nature', 'energy'].forEach(key => {
+                const val = Math.max(0, Math.min(100, state.stats[key]));
+                state.stats[key] = val;
+                const cap = key.charAt(0).toUpperCase() + key.slice(1);
+                document.getElementById(`val${cap}`).textContent = `${val}%`;
+                document.getElementById(`bar${cap}`).style.width = `${val}%`;
+            });
+
+            // Sandbox button state
+            const sbBtn = document.getElementById('btnSandboxToggle');
+            document.getElementById('sandboxStatus').textContent = state.sandboxMode ? 'ON' : 'OFF';
+            if (state.sandboxMode) {
+                sbBtn.classList.remove('bg-slate-200', 'text-slate-700');
+                sbBtn.classList.add('bg-amber-400', 'text-amber-950');
+            } else {
+                sbBtn.classList.add('bg-slate-200', 'text-slate-700');
+                sbBtn.classList.remove('bg-amber-400', 'text-amber-950');
+            }
+
+            // Mission Banner
+            document.getElementById('missionTitle').textContent = `Level ${lvl.id}: ${lvl.title}`;
+            document.getElementById('missionDesc').textContent = lvl.desc;
+            const sdgContainer = document.getElementById('missionSdgIcons');
+            sdgContainer.innerHTML = lvl.sdgs.map(s => `
+                <div class="${s.color} text-white font-fredoka font-bold text-xs sm:text-sm px-2.5 py-1.5 rounded-xl border-2 border-white shadow">
+                    SDG ${s.num}
+                </div>
+            `).join('');
+
+            // Overall Goal Progress
+            const totalTarget = state.goals.reduce((acc, g) => acc + g.target, 0);
+            const totalDone = state.goals.reduce((acc, g) => acc + Math.min(g.current, g.target), 0);
+            const pct = totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0;
+            document.getElementById('goalProgressText').textContent = `${totalDone} / ${totalTarget}`;
+            document.getElementById('goalProgressBar').style.width = `${pct}%`;
+
+            // Checklist
+            const checklist = document.getElementById('taskChecklist');
+            checklist.innerHTML = state.goals.map(g => {
+                const done = g.current >= g.target;
+                return `
+                    <li class="flex items-center justify-between p-2 rounded-xl ${done ? 'bg-emerald-100 text-emerald-900 line-through opacity-80' : 'bg-slate-100'}">
+                        <span class="flex items-center gap-2">
+                            <span>${done ? '✅' : '⬜'}</span>
+                            <span>${g.label}</span>
+                        </span>
+                        <span class="font-fredoka text-xs px-2 py-0.5 rounded-full ${done ? 'bg-emerald-500 text-white' : 'bg-white text-slate-700'}">
+                            ${Math.min(g.current, g.target)}/${g.target}
+                        </span>
+                    </li>
+                `;
+            }).join('');
+
+            renderGrid();
+            renderToolDock();
+        }
+
+        function renderGrid() {
+            const gridEl = document.getElementById('townGrid');
+            gridEl.innerHTML = '';
+
+            state.grid.forEach(tile => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                const isWater = tile.terrain === 'water';
+                let bgClass = isWater
+                    ? 'bg-sky-400/85 hover:bg-sky-300 border-sky-500/50'
+                    : 'bg-lime-300/90 hover:bg-lime-200 border-emerald-500/40';
+
+                if (tile.hazard) {
+                    bgClass = 'bg-amber-200/95 hover:bg-amber-100 border-rose-400 ring-2 ring-rose-400/60';
+                } else if (tile.item && tile.item.id !== 'starter_home') {
+                    bgClass = isWater
+                        ? 'bg-cyan-300 border-cyan-500'
+                        : 'bg-emerald-200 border-emerald-500';
+                }
+
+                btn.className = `town-tile relative rounded-xl sm:rounded-2xl border-2 ${bgClass} flex flex-col items-center justify-center shadow-sm cursor-pointer overflow-hidden p-1`;
+                
+                if (tile.hazard) {
+                    btn.innerHTML = `
+                        <span class="text-xl sm:text-3xl animate-bounce">${tile.hazard.emoji}</span>
+                        <span class="text-[9px] sm:text-[10px] font-extrabold text-rose-800 bg-white/80 px-1 rounded truncate max-w-full">${tile.hazard.label}</span>
+                    `;
+                } else if (tile.item) {
+                    btn.innerHTML = `
+                        <span class="text-xl sm:text-3xl animate-pop">${tile.item.emoji}</span>
+                        <span class="text-[9px] sm:text-[10px] font-extrabold text-slate-800 bg-white/80 px-1 rounded truncate max-w-full">${tile.item.name}</span>
+                    `;
+                } else {
+                    btn.innerHTML = `
+                        <span class="text-xs sm:text-sm opacity-45">${isWater ? '〰️' : '🌱'}</span>
+                    `;
+                }
+
+                btn.addEventListener('click', () => handleTileClick(tile.index));
+                gridEl.appendChild(btn);
+            });
+        }
+
+        function renderToolDock() {
+            const lvl = LEVELS[state.currentLevelIdx];
+            const dock = document.getElementById('toolDock');
+            dock.innerHTML = lvl.tools.map(tool => {
+                const isSelected = state.selectedToolId === tool.id;
+                const canAfford = state.coins >= tool.cost;
+                return `
+                    <button type="button" data-tool-id="${tool.id}"
+                        class="tool-card btn-kid text-left p-2.5 sm:p-3 rounded-2xl border-3 flex flex-col justify-between transition
+                        ${isSelected ? 'bg-amber-100 border-amber-500 ring-2 ring-amber-400' : 'bg-slate-50 hover:bg-slate-100 border-slate-200'}
+                        ${!canAfford && tool.cost > 0 ? 'opacity-60' : ''}">
+                        <div class="flex items-center justify-between w-full mb-1">
+                            <span class="text-2xl">${tool.emoji}</span>
+                            <span class="font-fredoka font-bold text-xs px-2 py-0.5 rounded-full ${tool.cost === 0 ? 'bg-purple-200 text-purple-900' : 'bg-yellow-300 text-yellow-950'}">
+                                ${tool.cost === 0 ? 'FREE Task' : `🪙 ${tool.cost}`}
+                            </span>
+                        </div>
+                        <div class="font-fredoka font-bold text-sm text-slate-800 leading-tight">${tool.name}</div>
+                        <div class="text-[11px] font-semibold text-slate-500 leading-snug mt-0.5">${tool.desc}</div>
+                    </button>
+                `;
+            }).join('');
+
+            dock.querySelectorAll('.tool-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const id = card.getAttribute('data-tool-id');
+                    const tool = lvl.tools.find(t => t.id === id);
+                    if (!tool) return;
+                    sfx.pop();
+                    if (tool.action === 'minigame') {
+                        openMiniGameModal(lvl, tool);
+                    } else {
+                        state.selectedToolId = id;
+                        renderToolDock();
+                        showToast(tool.emoji, `Selected: ${tool.name}! Tap a tile on the map.`);
+                    }
+                });
+            });
+        }
+
+        // ==========================================
+        // 6. TILE INTERACTION & GOAL CHECKING
+        // ==========================================
+        function handleTileClick(tileIndex) {
+            const lvl = LEVELS[state.currentLevelIdx];
+            const tile = state.grid[tileIndex];
+            const tool = lvl.tools.find(t => t.id === state.selectedToolId);
+
+            if (!tool) {
+                showToast('👆', 'Pick a tool from the toolkit first!');
+                return;
+            }
+
+            if (tool.action === 'clean_hazard') {
+                if (!tile.hazard) {
+                    sfx.error();
+                    showToast('🔍', `Tap one of the ${lvl.hazardEmoji} ${lvl.hazardLabel} tiles to clean it!`);
+                    return;
+                }
+                if (state.coins < tool.cost) {
+                    sfx.error();
+                    showToast('🪙', 'Not enough Eco-Coins! Try the FREE Mini-Task card!');
+                    return;
+                }
+                state.coins -= tool.cost;
+                tile.hazard = null;
+                applyStats(tool.stats);
+                incrementGoal('hazards');
+                sfx.water();
+                showToast('✨', `Cleaned up! +Nature & +Happiness!`);
+                renderAll();
+                checkLevelVictory();
+            } else if (tool.action === 'build') {
+                if (tile.hazard) {
+                    sfx.error();
+                    showToast('🧹', `Clean the ${tile.hazard.label} here first!`);
+                    return;
+                }
+                if (tile.item) {
+                    sfx.error();
+                    showToast('🏡', `There's already a ${tile.item.name} here! Pick an empty tile.`);
+                    return;
+                }
+                // Level 2 & 9 water placement rules: allow building coral/water filters anywhere or nicely
+                if (state.coins < tool.cost) {
+                    sfx.error();
+                    showToast('🪙', 'Not enough Eco-Coins! Try the FREE Mini-Task card to earn more!');
+                    return;
+                }
+                state.coins -= tool.cost;
+                tile.item = { emoji: tool.emoji, name: tool.name, id: tool.id };
+                applyStats(tool.stats);
+                incrementGoal(tool.id);
+                sfx.build();
+                showToast(tool.emoji, `Built ${tool.name}! EcoTown is thriving!`);
+                renderAll();
+                checkLevelVictory();
+            }
+        }
+
+        function applyStats(delta) {
+            state.stats.happy = Math.max(0, Math.min(100, state.stats.happy + (delta.happy || 0)));
+            state.stats.nature = Math.max(0, Math.min(100, state.stats.nature + (delta.nature || 0)));
+            state.stats.energy = Math.max(0, Math.min(100, state.stats.energy + (delta.energy || 0)));
+        }
+
+        function incrementGoal(goalId) {
+            const g = state.goals.find(item => item.id === goalId);
+            if (g) {
+                g.current++;
+            }
+        }
+
+        function checkLevelVictory() {
+            if (state.levelCompleted) return;
+            const allDone = state.goals.every(g => g.current >= g.target);
+            if (allDone) {
+                state.levelCompleted = true;
+                const lvl = LEVELS[state.currentLevelIdx];
+                state.completedBadges.add(lvl.id);
+                if (lvl.id < 10 && state.unlockedMaxLevel <= lvl.id) {
+                    state.unlockedMaxLevel = lvl.id + 1;
+                }
+                saveProgress();
+                sfx.victory();
+                showVictoryModal(lvl);
+            }
+        }
+
+        // ==========================================
+        // 7. MINI-GAME & MODALS
+        // ==========================================
+        function openMiniGameModal(lvl, tool) {
+            const modal = document.getElementById('miniGameModal');
+            document.getElementById('miniGameTitle').textContent = lvl.miniGame.title;
+            document.getElementById('miniGamePrompt').textContent = lvl.miniGame.prompt;
+
+            const content = document.getElementById('miniGameContent');
+            content.innerHTML = `
+                <div class="space-y-2.5">
+                    ${lvl.miniGame.options.map((opt, idx) => `
+                        <button type="button" data-opt-idx="${idx}" class="mini-opt btn-kid w-full bg-white hover:bg-emerald-50 border-2 border-slate-300 hover:border-emerald-400 rounded-xl p-3 text-left font-fredoka font-semibold text-sm sm:text-base text-slate-800">
+                            ${opt.label}
+                        </button>
+                    `).join('')}
+                </div>
+                <div id="miniGameFeedback" class="mt-3 text-sm font-bold hidden"></div>
+            `;
+
+            content.querySelectorAll('.mini-opt').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.getAttribute('data-opt-idx'), 10);
+                    const chosen = lvl.miniGame.options[idx];
+                    const fb = document.getElementById('miniGameFeedback');
+                    fb.classList.remove('hidden');
+
+                    if (chosen.correct) {
+                        sfx.victory();
+                        state.coins += chosen.reward;
+                        applyStats(tool.stats);
+                        renderAll();
+                        fb.className = 'mt-3 p-3 rounded-xl bg-emerald-100 text-emerald-900 text-sm font-bold animate-pop';
+                        fb.innerHTML = `${chosen.feedback} <span class="block mt-1 text-amber-700">+${chosen.reward} Eco-Coins earned! 🪙</span>`;
+                        content.querySelectorAll('.mini-opt').forEach(b => b.disabled = true);
+                        setTimeout(() => {
+                            modal.classList.add('hidden');
+                        }, 1600);
+                    } else {
+                        sfx.error();
+                        fb.className = 'mt-3 p-3 rounded-xl bg-rose-100 text-rose-800 text-sm font-bold animate-pop';
+                        fb.textContent = chosen.feedback;
+                    }
+                });
+            });
+
+            modal.classList.remove('hidden');
+        }
+
+        function showVictoryModal(lvl) {
+            document.getElementById('victoryBadgeEmoji').textContent = lvl.badgeEmoji;
+            document.getElementById('victoryTitle').textContent = lvl.badgeName;
+            document.getElementById('victoryMessage').textContent = `You completed Level ${lvl.id} (${lvl.title}) and made EcoTown brighter and greener!`;
+            document.getElementById('victorySdgFact').innerHTML = `💡 <strong>SDG Fun Fact:</strong> ${lvl.fact}`;
+
+            const nextBtn = document.getElementById('btnNextLevel');
+            if (lvl.id >= 10) {
+                nextBtn.textContent = "🎉 Celebrate & Replay!";
+            } else {
+                nextBtn.textContent = `Start Level ${lvl.id + 1} ➡️`;
+            }
+
+            document.getElementById('victoryModal').classList.remove('hidden');
+        }
+
+        function openLevelsModal() {
+            const grid = document.getElementById('levelsGrid');
+            grid.innerHTML = LEVELS.map((lvl, idx) => {
+                const isUnlocked = state.sandboxMode || lvl.id <= state.unlockedMaxLevel;
+                const isBadgeEarned = state.completedBadges.has(lvl.id);
+                const isCurrent = idx === state.currentLevelIdx;
+
+                return `
+                    <button type="button" data-lvl-idx="${idx}" ${!isUnlocked ? 'disabled' : ''}
+                        class="level-select-btn btn-kid p-3.5 rounded-2xl border-3 text-left flex items-center justify-between gap-3
+                        ${isCurrent ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-300' : isUnlocked ? 'bg-white border-slate-200 hover:border-emerald-400' : 'bg-slate-100 border-slate-200 opacity-60'}">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl ${isUnlocked ? 'bg-gradient-to-br from-emerald-400 to-teal-500 text-white' : 'bg-slate-300 text-slate-500'} flex items-center justify-center font-fredoka font-bold text-xl shrink-0 shadow">
+                                ${isUnlocked ? lvl.badgeEmoji : '🔒'}
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="font-fredoka font-bold text-xs uppercase text-indigo-600">Level ${lvl.id}</span>
+                                    ${isBadgeEarned ? '<span class="text-xs bg-amber-300 text-amber-950 font-bold px-2 py-0.2 rounded-full">🏅 Badge</span>' : ''}
+                                </div>
+                                <div class="font-fredoka font-bold text-base text-slate-800">${lvl.title}</div>
+                                <div class="text-xs font-bold text-slate-500">${lvl.subtitle}</div>
+                            </div>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+
+            grid.querySelectorAll('.level-select-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.getAttribute('data-lvl-idx'), 10);
+                    sfx.pop();
+                    document.getElementById('levelsModal').classList.add('hidden');
+                    loadLevel(idx);
+                });
+            });
+
+            document.getElementById('levelsModal').classList.remove('hidden');
+        }
+
+        let toastTimer = null;
+        function showToast(icon, msg) {
+            const toast = document.getElementById('townToast');
+            document.getElementById('toastIcon').textContent = icon;
+            document.getElementById('toastMsg').textContent = msg;
+            toast.classList.remove('opacity-0', 'translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 2500);
+        }
+
+        // ==========================================
+        // 8. EVENT LISTENERS & INITIALIZATION
+        // ==========================================
+        document.getElementById('btnLevelsModal').addEventListener('click', () => {
+            sfx.pop();
+            openLevelsModal();
+        });
+        document.getElementById('closeLevelsModal').addEventListener('click', () => {
+            document.getElementById('levelsModal').classList.add('hidden');
+        });
+        document.getElementById('closeLevelsModalBottom').addEventListener('click', () => {
+            document.getElementById('levelsModal').classList.add('hidden');
+        });
+
+        document.getElementById('btnSandboxToggle').addEventListener('click', () => {
+            state.sandboxMode = !state.sandboxMode;
+            sfx.pop();
+            renderAll();
+            showToast('🔓', state.sandboxMode ? 'Sandbox Mode ON: All 10 Levels Unlocked!' : 'Sandbox Mode OFF');
+        });
+
+        document.getElementById('btnSoundToggle').addEventListener('click', (e) => {
+            sfx.enabled = !sfx.enabled;
+            e.currentTarget.textContent = sfx.enabled ? '🔊' : '🔇';
+            if (sfx.enabled) sfx.pop();
+        });
+
+        document.getElementById('closeMiniGame').addEventListener('click', () => {
+            document.getElementById('miniGameModal').classList.add('hidden');
+        });
+
+        document.getElementById('btnReplayLevel').addEventListener('click', () => {
+            sfx.pop();
+            document.getElementById('victoryModal').classList.add('hidden');
+            loadLevel(state.currentLevelIdx);
+        });
+
+        document.getElementById('btnNextLevel').addEventListener('click', () => {
+            sfx.pop();
+            document.getElementById('victoryModal').classList.add('hidden');
+            const nextIdx = (state.currentLevelIdx + 1) % LEVELS.length;
+            loadLevel(nextIdx);
+        });
+
+        // AI Eco-Buddy Chat Handlers
+        document.getElementById('chatForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            askSprout(text, true);
+        });
+
+        document.querySelectorAll('.quick-ask').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const prompt = btn.getAttribute('data-prompt');
+                askSprout(prompt, true);
+            });
+        });
+
+        document.getElementById('btnBuddyHint').addEventListener('click', () => {
+            const lvl = LEVELS[state.currentLevelIdx];
+            const remaining = state.goals.filter(g => g.current < g.target).map(g => g.label).join(', ');
+            askSprout(`Give me a playful hint for Level ${lvl.id}! My remaining tasks are: ${remaining || 'almost done!'}.`, true);
+        });
+
+        // Start game on Level 1 when window loads
+        window.onload = function () {
+            loadLevel(0);
+        };
+    </script>
+</body>
+</html>
